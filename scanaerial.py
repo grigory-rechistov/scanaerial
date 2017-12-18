@@ -19,6 +19,10 @@ This script will search an area with similar color and send
 it back to JOSM
 """
 
+# TODO add timeout option to not block UI forever
+# TODO change pixel choosing algorithm to analyze for pattern
+# TODO wave pattern distribution
+
 __author__ = "Darafei Praliaskouski, Jonas Stein, Ruben W., Vort"
 __license__ = "GPL"
 __credits__ = ["Lakewalker-developer-Team", "JOSM-developer-Team", "Malenki"]
