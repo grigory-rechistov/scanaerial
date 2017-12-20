@@ -41,6 +41,50 @@ from canvas import WmsCanvas
 from debug import debug
 from scanaerial_functions import distance, point_line_distance, douglas_peucker, bing_img_url
 
+def print_xml(outline, oldmask, POLYGON_TAGS, WAY_TAGS):
+    node_num = 0
+    way_num = 0
+    roles = {}
+    stdout.write('<osm version="0.6">')
+    for lin in outline:
+        area = 0
+        prx, pry = lin[-1]
+
+        for x, y in lin:
+            area += (x * pry - y * prx) / 2
+            prx = x
+            pry = y
+
+            node_num -= 1
+            lon, lat = oldmask.PixelAs4326(x, y)
+            stdout.write('<node id="%s" lon="%s" lat="%s" version="1" />' %
+                         (node_num, lon, lat))
+
+        way_num -= 1
+        roles[way_num] = (area > 0)
+        stdout.write('<way id="%s" version="1">' % (way_num))
+        for y in range(node_num, node_num + len(lin)):
+            stdout.write('<nd ref="%s" />' % (y))
+        stdout.write('<nd ref="%s" />' % (node_num))
+        if len(outline) == 1:
+            for z in WAY_TAGS.items():
+                stdout.write(' <tag k="%s" v="%s" />"' % z)
+        stdout.write("</way>")
+
+    if way_num < -1:
+        stdout.write('<relation id="-1" version="1">')
+        for y in range(way_num, 0):
+            role = ("inner", "outer")[int(roles[y])]
+            stdout.write('<member type="way" ref="%s" role="%s" />' % (y, role))
+
+        for z in POLYGON_TAGS.items():
+            stdout.write(' <tag k="%s" v="%s" />"' % z)
+
+        stdout.write('</relation>')
+    stdout.write("</osm>")
+    stdout.flush()
+
+
 try:
     import psyco
     psyco.full()
@@ -215,11 +259,6 @@ while queue:
 debug("Found %s normales here." % len(normales_list))
 debug("Second walk (leaving only poly): %s" % str(clock() - ttz))
 
-stdout.write('<osm version="0.6">')
-node_num = 0
-way_num = 0
-
-
 outline = []
 
 popped = False
@@ -278,44 +317,7 @@ if lin:
 
 debug("Normales walk: %s, " % (str(clock() - ttz),))
 
-roles = {}
-for lin in outline:
-    area = 0
-    prx, pry = lin[-1]
-
-    for x, y in lin:
-        area += (x * pry - y * prx) / 2
-        prx = x
-        pry = y
-
-        node_num -= 1
-        lon, lat = oldmask.PixelAs4326(x, y)
-        stdout.write('<node id="%s" lon="%s" lat="%s" version="1" />' %
-                     (node_num, lon, lat))
-
-    way_num -= 1
-    roles[way_num] = (area > 0)
-    stdout.write('<way id="%s" version="1">' % (way_num))
-    for y in range(node_num, node_num + len(lin)):
-        stdout.write('<nd ref="%s" />' % (y))
-    stdout.write('<nd ref="%s" />' % (node_num))
-    if len(outline) == 1:
-        for z in WAY_TAGS.items():
-            stdout.write(' <tag k="%s" v="%s" />"' % z)
-    stdout.write("</way>")
-
-if way_num < -1:
-    stdout.write('<relation id="-1" version="1">')
-    for y in range(way_num, 0):
-        role = ("inner", "outer")[int(roles[y])]
-        stdout.write('<member type="way" ref="%s" role="%s" />' % (y, role))
-
-    for z in POLYGON_TAGS.items():
-        stdout.write(' <tag k="%s" v="%s" />"' % z)
-
-    stdout.write('</relation>')
-stdout.write("</osm>")
-stdout.flush()
+print_xml(outline, oldmask, POLYGON_TAGS, WAY_TAGS)
 
 debug("All done in: %s" % str(clock() - PROGRAM_START_TIMESTAMP))
 
